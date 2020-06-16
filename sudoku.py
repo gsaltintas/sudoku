@@ -1,5 +1,6 @@
 import numpy as np
-
+import copy
+import random
 
 def to_set(*lists):
     """
@@ -11,9 +12,12 @@ def to_set(*lists):
     for lst in lists:
         s = s.union({i for i in np.array(lst).flatten()})
     return s
+#todo: add Grid class
+class Grid():
+    # , grid=self.grid
+    pass
 
-
-class Sudoku():
+class Sudoku(Grid):
     size = (9, 9)
 
     def __init__(self, grid=None, size=size):
@@ -28,24 +32,45 @@ class Sudoku():
         if grid is not None and self.valid_shape(grid):
             self.grid = grid
         else:
-            self.grid = np.random.randint(9, size=self.size)
+            self.grid = self.generate_grid()
 
     def generate_grid(self):
         n_rows, n_cols = self.size
-        grid = np.zeros(self.size)
+        grid = np.zeros(self.size, dtype=int)
         filled = 0
         stack = []
-        while filled < n_rows * n_cols:
-            pass
+        row, col=0,0
+        while filled<n_cols*n_rows:
+            pos = self.possible_numbers-to_set(self.row(row, grid),self.col(col,grid),self.square(row, col,grid))
+            while len(pos)<=0:
+                grid, row, col, pos, filled=stack.pop()
+
+            if len(pos) ==1:
+                grid[row][col] = pos.pop()
+            else:
+                rand_num=random.sample(pos,1)[0]#.pop()
+                pos.remove(rand_num)
+                stack.append((copy.copy(grid), row, col, pos, filled))
+                grid[row][col] = rand_num
+            filled+=1
+            col = (col+1) % n_cols
+            row = row+1 if col==0 else row
+        self.print_grid(grid)
+        self.grid=grid
+        print(self.is_valid())
+        return grid
+                            
 
     def possible_numbers(self, row, col):
         nums = {}
 
-    def row(self, row):
-        return self.grid[row, :]
+    def row(self, row, grid=None):
+        grid=self.grid if grid is None else grid
+        return grid[row, :]
 
-    def col(self, col):
-        return self.grid[:, col]
+    def col(self, col, grid=None):
+        grid=self.grid if grid is None else grid
+        return grid[:, col]
 
     def print_sudoku(self, grid=None):
         if grid is not None:
@@ -84,20 +109,24 @@ class Sudoku():
         squares_valid = all([self.square_is_valid(row, col) for row, col in squares])
         return all([rows, cols, squares_valid])
 
-    def row_is_valid(self, row):
-        return all(np.bincount(self.row(row), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
+    def row_is_valid(self, row, grid=None):
+        grid=self.grid if grid is None else grid
+        return all(np.bincount(self.row(row, grid), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
 
-    def col_is_valid(self, col):
-        return all(np.bincount(self.col(col), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
+    def col_is_valid(self, col, grid=None):
+        grid=self.grid if grid is None else grid
+        return all(np.bincount(self.col(col,grid), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
 
-    def square_is_valid(self, row, col):
+    def square_is_valid(self, row, col, grid=None):
+        grid=self.grid if grid is None else grid
         return all(
-            np.bincount(self.square(row, col).flatten(), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
+            np.bincount(self.square(row, col,grid).flatten(), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
 
-    def square(self, row, col):
+    def square(self, row, col, grid=None):
+        grid=self.grid if grid is None else grid
         n_rows, n_cols = np.sqrt(self.size)
         n_rows, n_cols = int(n_rows), int(n_cols)
-        return self.grid[n_rows * (row // n_rows):n_rows * (row // n_rows + 1),
+        return grid[n_rows * (row // n_rows):n_rows * (row // n_rows + 1),
                n_cols * (col // n_cols):n_cols * (col // n_cols + 1)]
 
     def valid_shape(self, grid):
@@ -114,9 +143,9 @@ class Sudoku():
 
 def main():
     sudoku = Sudoku(size=(9, 9))
-    print(sudoku.size, sudoku.possible_numbers)
-    print(sudoku.is_valid())
-    sudoku.print_sudoku()
+    # print(sudoku.size, sudoku.possible_numbers)
+    # print(sudoku.is_valid())
+    # sudoku.print_sudoku()
 
 
 if __name__ == "__main__":
