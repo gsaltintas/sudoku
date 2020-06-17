@@ -29,7 +29,6 @@ def find_min_key(d: dict):
 
 # todo: add Grid class
 class Grid():
-    # , grid=self.grid
     def __init__(self, array):
         pass
 
@@ -72,15 +71,10 @@ class SudokuSolver():
         popped = 0
         while filled < n_cols * n_rows:
             while len(possibilities) == 0:
-                solved.grid, row, col, possibilities, filled = stack.pop()
+                solved.grid, possibilities = stack.pop()
 
             row, col = self.find_min_entry(possibilities)
             pos = possibilities[(row, col)]
-
-            while len(pos) <= 0:
-                solved.grid, row, col, possibilities, filled = stack.pop()
-                row, col = self.find_min_entry(possibilities)
-                pos = possibilities[(row, col)]
 
             if len(pos) == 1:
                 num = pos.pop()
@@ -88,19 +82,17 @@ class SudokuSolver():
             else:
                 num = random.sample(pos, 1)[0]  # .pop()
                 pos.remove(num)
-                stack.append((copy.copy(solved.grid), row, col, copy.copy(possibilities), filled))
+                stack.append((copy.copy(solved.grid), copy.copy(possibilities)))
                 possibilities.pop((row, col))
             if solved.guess(row, col, num):
                 solved[row, col] = num
-                filled = solved.count_filled()
                 if not self.update_possibilities(solved, possibilities, (row, col), num):
-                    solved.grid, row, col, possibilities, filled = stack.pop()
-
-
+                    solved.grid, possibilities = stack.pop()
             else:
                 popped += 1
-                solved.grid, row, col, possibilities, filled = stack.pop()
+                solved.grid, possibilities = stack.pop()
             filled = solved.count_filled()
+        stack.clear()
         return solved
 
 
@@ -142,9 +134,8 @@ class Sudoku(Grid):
             filled += 1
             col = (col + 1) % n_cols
             row = row + 1 if col == 0 else row
-        # self.print_grid(grid)
         self.grid = grid
-        # print(self.is_valid())
+        stack.clear()
         return grid
 
     def remove(self, remaining_nos):
