@@ -1,7 +1,10 @@
-import numpy as np
 import copy
 import random
 
+import numpy as np
+
+
+# todo: add docstring
 def to_set(*lists):
     """
 
@@ -19,12 +22,12 @@ def find_min_key(d: dict):
     min_size = len(d[min_key])
     for key in d.keys():
         if len(d[key]) < min_size:
-            min_key=key
+            min_key = key
             min_size = len(d[key])
     return min_key
 
 
-#todo: add Grid class
+# todo: add Grid class
 class Grid():
     # , grid=self.grid
     def __init__(self, array):
@@ -43,53 +46,61 @@ class SudokuSolver():
 
     def find_min_entry(self, d):
         return find_min_key(d)
-        
+
     def update_possibilities(self, sudoku, possibilities, ind, guess):
         n_rows, n_cols = sudoku.size
+        nr, nc = int(np.sqrt(n_rows)), int(np.sqrt((n_cols)))
         row, col = ind
         row_ind = {(row, c) for c in range(n_cols)}
         col_ind = {(r, col) for r in range(n_rows)}
-        square_ind = {(n_rows*(row//n_rows)+i, n_cols*(col//n_cols)+j) for i in range(int(np.sqrt(n_rows))) for j in range(int(np.sqrt(n_cols)))}
+        square_ind = {(nr * (row // nr) + i, nc * (col // nc) + j) for i in range(nr)
+                      for j in range(nc)}
         indices = row_ind.union(col_ind.union(square_ind)) - {ind}
         for (r, c) in indices:
             if (r, c) in possibilities.keys():
-                possibilities[(r,c)] = possibilities[(r,c)]-{guess}
-        possibilities.pop(ind)
+                possibilities[(r, c)] = possibilities[(r, c)] - {guess}
+                if len(possibilities[(r, c)]) == 0:
+                    return False
+        return True
 
-        
     def solve(self, sudoku):
         n_rows, n_cols = sudoku.size
         solved = Sudoku(grid=sudoku.grid, size=sudoku.size)
         possibilities = self.generate_possible_numbers(solved)
-        filled = 0
+        filled = solved.count_filled()
         stack = []
-        popped=0
-        while filled<n_cols*n_rows:
+        popped = 0
+        while filled < n_cols * n_rows:
+            while len(possibilities) == 0:
+                solved.grid, row, col, possibilities, filled = stack.pop()
+
             row, col = self.find_min_entry(possibilities)
-            # print(row, col)
             pos = possibilities[(row, col)]
-            while len(pos)<=0:
-                solved, row, col, possibilities, filled=stack.pop()
+
+            while len(pos) <= 0:
+                solved.grid, row, col, possibilities, filled = stack.pop()
                 row, col = self.find_min_entry(possibilities)
                 pos = possibilities[(row, col)]
 
-            if len(pos) ==1:
+            if len(pos) == 1:
                 num = pos.pop()
+                possibilities.pop((row, col))
             else:
-                num=random.sample(pos,1)[0]#.pop()
+                num = random.sample(pos, 1)[0]  # .pop()
                 pos.remove(num)
-                stack.append((copy.copy(solved), row, col, copy.copy(possibilities), filled))
-
+                stack.append((copy.copy(solved.grid), row, col, copy.copy(possibilities), filled))
+                possibilities.pop((row, col))
             if solved.guess(row, col, num):
                 solved[row, col] = num
-                filled+=1
-                self.update_possibilities(solved, possibilities, (row, col), num)
+                filled = solved.count_filled()
+                if not self.update_possibilities(solved, possibilities, (row, col), num):
+                    solved.grid, row, col, possibilities, filled = stack.pop()
+
 
             else:
-                popped+=1
-                solved, row, col, possibilities, filled=stack.pop()
-        print(filled)
-        print(solved.is_valid())
+                popped += 1
+                solved.grid, row, col, possibilities, filled = stack.pop()
+            filled = solved.count_filled()
         return solved
 
 
@@ -115,48 +126,46 @@ class Sudoku(Grid):
         grid = np.zeros(self.size, dtype=int)
         filled = 0
         stack = []
-        row, col=0,0
-        while filled<n_cols*n_rows:
-            pos = self.possible_numbers-to_set(self.row(row, grid),self.col(col,grid),self.square(row, col,grid))
-            while len(pos)<=0:
-                grid, row, col, pos, filled=stack.pop()
+        row, col = 0, 0
+        while filled < n_cols * n_rows:
+            pos = self.possible_numbers - to_set(self.row(row, grid), self.col(col, grid), self.square(row, col, grid))
+            while len(pos) <= 0:
+                grid, row, col, pos, filled = stack.pop()
 
-            if len(pos) ==1:
+            if len(pos) == 1:
                 grid[row][col] = pos.pop()
             else:
-                rand_num=random.sample(pos,1)[0]#.pop()
+                rand_num = random.sample(pos, 1)[0]  # .pop()
                 pos.remove(rand_num)
                 stack.append((copy.copy(grid), row, col, pos, filled))
                 grid[row][col] = rand_num
-            filled+=1
-            col = (col+1) % n_cols
-            row = row+1 if col==0 else row
-        self.print_grid(grid)
-        self.grid=grid
-        print(self.is_valid())
+            filled += 1
+            col = (col + 1) % n_cols
+            row = row + 1 if col == 0 else row
+        # self.print_grid(grid)
+        self.grid = grid
+        # print(self.is_valid())
         return grid
 
     def remove(self, remaining_nos):
-        n_rows, n_cols = self.size[0] , self.size[1]
-        pops = n_rows*n_cols-remaining_nos
+        n_rows, n_cols = self.size[0], self.size[1]
+        pops = n_rows * n_cols - remaining_nos
         pop_indices = random.sample([(row, col) for row in range(n_rows) for col in range(n_cols)], pops)
         for ind in pop_indices:
             self[ind] = 0
-    
+
     def solve(self):
         pass
-                            
 
     def get_possible_numbers(self, row, col):
-        return self.possible_numbers-to_set(self.row(row),self.col(col),self.square(row, col))
-
+        return self.possible_numbers - to_set(self.row(row), self.col(col), self.square(row, col))
 
     def row(self, row, grid=None):
-        grid=self.grid if grid is None else grid
+        grid = self.grid if grid is None else grid
         return grid[row, :]
 
     def col(self, col, grid=None):
-        grid=self.grid if grid is None else grid
+        grid = self.grid if grid is None else grid
         return grid[:, col]
 
     def print_sudoku(self, grid=None):
@@ -200,22 +209,21 @@ class Sudoku(Grid):
     def count_filled(self):
         return sum(np.bincount(self.grid.flatten(), minlength=2)[1:])
 
-
     def row_is_valid(self, row, grid=None):
-        grid=self.grid if grid is None else grid
+        grid = self.grid if grid is None else grid
         return all(np.bincount(self.row(row, grid), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
 
     def col_is_valid(self, col, grid=None):
-        grid=self.grid if grid is None else grid
-        return all(np.bincount(self.col(col,grid), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
+        grid = self.grid if grid is None else grid
+        return all(np.bincount(self.col(col, grid), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
 
     def square_is_valid(self, row, col, grid=None):
-        grid=self.grid if grid is None else grid
+        grid = self.grid if grid is None else grid
         return all(
-            np.bincount(self.square(row, col,grid).flatten(), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
+            np.bincount(self.square(row, col, grid).flatten(), minlength=self.size[0] + 1)[1:] <= np.ones(self.size[0]))
 
     def square(self, row, col, grid=None):
-        grid=self.grid if grid is None else grid
+        grid = self.grid if grid is None else grid
         n_rows, n_cols = np.sqrt(self.size)
         n_rows, n_cols = int(n_rows), int(n_cols)
         return grid[n_rows * (row // n_rows):n_rows * (row // n_rows + 1),
@@ -229,22 +237,22 @@ class Sudoku(Grid):
             #         return False
             return True
         except:
-            print (ValueError("Grid must be of the size %s" % (self.size,)))
+            print(ValueError("Grid must be of the size %s" % (self.size,)))
             return False
 
     def __getitem__(self, key):
-        if type(key) is not tuple or len(key)!=2 or (type(key[0]) is not int and type(key[1]) is not int):
+        if type(key) is not tuple or len(key) != 2 or (type(key[0]) is not int and type(key[1]) is not int):
             raise ValueError("Key must be a tuple of 2 integers.")
         else:
             return self.grid[key[0]][key[1]]
 
     def __setitem__(self, key, value):
-        if type(key) is not tuple or len(key)!=2 or (type(key[0]) is not int and type(key[1]) is not int):
+        if type(key) is not tuple or len(key) != 2 or (type(key[0]) is not int and type(key[1]) is not int):
             print(TypeError("Key must be a tuple of 2 integers."))
         elif value not in self.possible_numbers and value != 0:
-            print(ValueError("Invalid number, numbers should be in %s"%self.possible_numbers))
-        elif not self.guess(key[0],key[1], value):
-            print(ValueError("Invalid guess for (%d, %d)"%(key[0], key[1])))
+            print(ValueError("Invalid number, numbers should be in %s" % self.possible_numbers))
+        elif not self.guess(key[0], key[1], value):
+            print(ValueError("Invalid guess for (%d, %d)" % (key[0], key[1])))
         else:
             self.grid[key[0]][key[1]] = value
 
@@ -254,19 +262,17 @@ class Sudoku(Grid):
         else:
             return (self.grid == sudoku.grid).all()
 
+
 def main():
     sudoku = Sudoku(size=(9, 9))
-    # print(sudoku.size, sudoku.possible_numbers)
-    # print(sudoku.is_valid())
     # sudoku.print_sudoku()
-    sudoku[1,1]=9    
-    # print(sudoku[1,:])
-    sudoku.remove(20)
-    sudoku.print_sudoku()
+    removed = Sudoku(sudoku.grid, size=sudoku.size)
+    removed.remove((sudoku.size[0] * sudoku.size[1]) // 3 * 2)
+    # sudoku.print_sudoku()
     solver = SudokuSolver()
-    # solver.update_possibilities(sudoku, {(1,2):{2,3,4}, (3,1):{1,2}}, (1,1), 1)
-    # solver.solve(sudoku)
-    solver.solve(sudoku).print_sudoku()
+    solved = solver.solve(removed)
+    solved.print_sudoku()
+    print(solved == sudoku)
 
 
 if __name__ == "__main__":
