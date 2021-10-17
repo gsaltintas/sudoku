@@ -1,5 +1,6 @@
 import copy
 import random
+from enum import Enum
 
 import numpy as np
 
@@ -25,6 +26,14 @@ def find_min_key(d: dict):
             min_key = key
             min_size = len(d[key])
     return min_key
+
+
+class DifficultyLevel(Enum):
+    pass
+
+
+class PuzzleGenerator():
+    pass
 
 
 # todo: add Grid class
@@ -144,9 +153,6 @@ class Sudoku(Grid):
         pop_indices = random.sample([(row, col) for row in range(n_rows) for col in range(n_cols)], pops)
         for ind in pop_indices:
             self[ind] = 0
-
-    def solve(self):
-        pass
 
     def get_possible_numbers(self, row, col):
         return self.possible_numbers - to_set(self.row(row), self.col(col), self.square(row, col))

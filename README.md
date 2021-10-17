@@ -19,3 +19,7 @@ Given a Sudoku of size (*n,n*) with *m* empty slots, SudokuSolver
  pick one of them as *num* and add the last state of the solver to the stack .
 4. Try assigning *num* to [*r,c*]. If the guess is not valid return to the previous state of the solver.
 5. Repeat [*2-4*] until all entries are filled in the sudoku grid. 
+
+### To-do:
+- Add difficulty level
+- Implement a basic UI
